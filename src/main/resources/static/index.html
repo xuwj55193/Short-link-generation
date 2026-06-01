@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短链接生成系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result-item {
+            margin-bottom: 15px;
+        }
+        
+        .result-label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .result-value {
+            color: #333;
+            word-break: break-all;
+        }
+        
+        .result-value a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .result-value a:hover {
+            text-decoration: underline;
+        }
+        
+        .copy-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            width: auto;
+        }
+        
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+        
+        .error {
+            background: #fee;
+            border-left-color: #e74c3c;
+            color: #c0392b;
+        }
+        
+        .success {
+            background: #efe;
+            border-left-color: #27ae60;
+        }
+        
+        .stats-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+        
+        .stats-input {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .stats-input input {
+            flex: 1;
+        }
+        
+        .stats-input button {
+            width: auto;
+            padding: 12px 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 短链接生成系统</h1>
+        <p class="subtitle">快速生成短链接，追踪访问统计</p>
+        
+        <div class="input-group">
+            <label for="longUrl">原始链接：</label>
+            <input type="text" id="longUrl" placeholder="请输入要缩短的URL，例如：https://www.example.com/very/long/url" />
+        </div>
+        
+        <div class="input-group">
+            <label for="userId">用户ID（可选）：</label>
+            <input type="number" id="userId" placeholder="默认为 1" value="1" />
+        </div>
+        
+        <button onclick="generateShortLink()">生成短链接</button>
+        
+        <div id="result" class="result"></div>
+        
+        <div class="stats-section">
+            <h2 style="margin-bottom: 15px; color: #333;">📊 查看访问统计</h2>
+            <div class="stats-input">
+                <input type="text" id="statsShortCode" placeholder="输入短链接代码（例如：abc123）" />
+                <button onclick="getStats()">查询</button>
+            </div>
+            <div id="statsResult" class="result" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+    
+    <script>
+        async function generateShortLink() {
+            const longUrl = document.getElementById('longUrl').value.trim();
+            const userId = document.getElementById('userId').value || 1;
+            const resultDiv = document.getElementById('result');
+            
+            if (!longUrl) {
+                showError('请输入原始链接');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/shortlink/generate?userId=${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ longUrl })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(data);
+                } else {
+                    showError(data.error || '生成失败');
+                }
+            } catch (error) {
+                showError('网络错误：' + error.message);
+            }
+        }
+        
+        async function getStats() {
+            const shortCode = document.getElementById('statsShortCode').value.trim();
+            const statsResultDiv = document.getElementById('statsResult');
+            
+            if (!shortCode) {
+                statsResultDiv.className = 'result error show';
+                statsResultDiv.innerHTML = '<div class="result-label">错误</div><div class="result-value">请输入短链接代码</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/stats/${shortCode}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statsResultDiv.className = 'result success show';
+                    statsResultDiv.innerHTML = `
+                        <div class="result-item">
+                            <div class="result-label">短链接代码：</div>
+                            <div class="result-value">${data.shortCode}</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">访问次数：</div>
+                            <div class="result-value" style="font-size: 24px; color: #667eea; font-weight: bold;">${data.accessCount}</div>
+                        </div>
+                    `;
+                } else {
+                    statsResultDiv.className = 'result error show';
+                    statsResultDiv.innerHTML = '<div class="result-label">错误</div><div class="result-value">未找到该短链接</div>';
+                }
+            } catch (error) {
+                statsResultDiv.className = 'result error show';
+                statsResultDiv.innerHTML = '<div class="result-label">错误</div><div class="result-value">网络错误：' + error.message + '</div>';
+            }
+        }
+        
+        function showSuccess(data) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result success show';
+            resultDiv.innerHTML = `
+                <div class="result-item">
+                    <div class="result-label">✅ 短链接生成成功！</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">短链接：</div>
+                    <div class="result-value">
+                        <a href="${data.shortUrl}" target="_blank">${data.shortUrl}</a>
+                    </div>
+                    <button class="copy-btn" onclick="copyToClipboard('${data.shortUrl}')">复制链接</button>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">短代码：</div>
+                    <div class="result-value">${data.shortCode}</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">原始链接：</div>
+                    <div class="result-value">${data.longUrl}</div>
+                </div>
+            `;
+        }
+        
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result error show';
+            resultDiv.innerHTML = `
+                <div class="result-label">❌ 错误</div>
+                <div class="result-value">${message}</div>
+            `;
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制到剪贴板！');
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+        
+        // 支持按 Enter 键生成
+        document.getElementById('longUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateShortLink();
+            }
+        });
+        
+        document.getElementById('statsShortCode').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                getStats();
+            }
+        });
+    </script>
+</body>
+</html>
